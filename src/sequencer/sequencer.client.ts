@@ -1,6 +1,10 @@
-import { sign, verify } from "@noble/ed25519";
+import * as ed from "@noble/ed25519";
+import { sha512 } from "@noble/hashes/sha512";
 import { Keypair } from "@solana/web3.js";
 import { OrderIntent, PlaceOrderIntentParams } from "../types";
+
+// Configure ed25519 to use SHA-512
+ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
 const FERMI_DEX_ORDER_PREFIX = "FRM_DEX_ORDER:";
 
@@ -63,7 +67,7 @@ export class FermiHybridClient {
    */
   signMessage(messageBytes: Uint8Array, owner: Keypair): Uint8Array {
     // Note: We only use first 32 bytes of secretKey as per Ed25519 spec
-    const signature = sign(messageBytes, owner.secretKey.slice(0, 32));
+    const signature = ed.sign(messageBytes, owner.secretKey.slice(0, 32));
     return signature;
   }
 
@@ -79,7 +83,11 @@ export class FermiHybridClient {
     signature: Uint8Array,
     owner: Keypair
   ): boolean {
-    const isValid = verify(signature, messageBytes, owner.publicKey.toBytes());
+    const isValid = ed.verify(
+      signature,
+      messageBytes,
+      owner.publicKey.toBytes()
+    );
     return isValid;
   }
 

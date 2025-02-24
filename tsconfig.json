@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "module": "commonjs",
+    "module": "ESNext",
+    "moduleResolution": "node",
     "lib": ["es2020", "DOM"],
     "declaration": true,
     "outDir": "./dist",
@@ -9,12 +10,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "types": ["node"]
   },
   "ts-node": {
-    "transpileOnly": true
+    "esm": true,
+    "experimentalSpecifiers": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
