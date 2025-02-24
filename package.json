@@ -1,5 +1,5 @@
 {
-  "name": "my-sdk",
+  "name": "fermi-hybrid-sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK Library",
   "main": "dist/index.js",
