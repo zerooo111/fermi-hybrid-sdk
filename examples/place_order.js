@@ -1,5 +1,5 @@
 import { Keypair } from "@solana/web3.js";
-import { FermiHybridClient, OrderIntentSide } from "./client";
+import { FermiHybridClient, OrderIntentSide } from "";
 
 const checkHealthTest = async () => {
   console.log("🔍 Checking if client is healthy");
@@ -32,7 +32,7 @@ const placeOrderIntentTest = async () => {
   }
 };
 
-const runTest = async (name: string, testFn: () => Promise<void>) => {
+const runTest = async (name, testFn) => {
   console.log(`------------------`);
   console.log(`🔍 Running ${name}`);
   const start = performance.now();

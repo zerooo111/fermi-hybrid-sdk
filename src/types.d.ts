@@ -1,22 +1,18 @@
-enum OrderIntentSide {
-  BUY = 'Buy',
-  SELL = 'Sell',
+
+interface OrderIntent {
+  order_id: number;
+  expiry: number;
+  price: number;
+  quantity: number;
+  side: OrderIntentSide;
+  owner: string;
 }
 
-/* This represents the data that will be encoded in the message to be signed */
-type OrderIntentSignMessage = {
-  price: number,
-  quantity: number,
-  order_id: number 
-  side: OrderIntentSide,
-  owner: string,
-  expiry: number
-}
-
-/* Order Intent Request */
-type PlaceOrderIntentRequest = {
-  intent: OrderIntentSignMessage,
-  signature: string,
-}
-
-
+type PlaceOrderIntentParams = {
+  price: number;
+  quantity: number;
+  ownerKeypair: Keypair;
+  side: OrderIntentSide;
+  expiry?: number;
+  orderId?: number;
+};
