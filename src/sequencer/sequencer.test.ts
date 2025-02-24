@@ -1,5 +1,6 @@
 import { Keypair } from "@solana/web3.js";
-import { FermiHybridClient, OrderIntentSide } from "./client";
+import { FermiHybridClient } from "./sequencer.client";
+import { OrderIntentSide } from "../types";
 
 const checkHealthTest = async () => {
   console.log("🔍 Checking if client is healthy");
