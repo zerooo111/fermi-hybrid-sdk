@@ -5,18 +5,15 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
-  "type": "module",
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "tsup",
     "dev": "node --loader ts-node/esm src/index.ts",
-    "test": "node --loader ts-node/esm src/tests/index.ts",
-    "test:sequencer": "node --loader ts-node/esm src/sequencer/sequencer.test.ts",
+    "test": "ts-node src/test/main.test.ts",
     "lint": "eslint src/**/*.ts",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "prepare": "npm run build"
+    "format": "prettier --write \"src/**/*.ts\""
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

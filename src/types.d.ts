@@ -1,6 +1,5 @@
-import { Keypair } from "@solana/web3.js";
-
-
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { OrderIntentSide } from "./sequencer/sequencer.client";
 
 interface OrderIntent {
   order_id: number;
@@ -9,6 +8,8 @@ interface OrderIntent {
   quantity: number;
   side: OrderIntentSide;
   owner: string;
+  base_mint: string;
+  quote_mint: string;
 }
 
 type PlaceOrderIntentParams = {
@@ -18,4 +19,6 @@ type PlaceOrderIntentParams = {
   side: OrderIntentSide;
   expiry?: number;
   orderId?: number;
+  baseMint: PublicKey;
+  quoteMint: PublicKey;
 };

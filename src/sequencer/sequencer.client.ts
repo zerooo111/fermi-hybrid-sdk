@@ -1,7 +1,6 @@
 import * as ed from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha512";
-import { Keypair } from "@solana/web3.js";
-import { OrderIntent, PlaceOrderIntentParams } from "../types";
+import { Keypair, PublicKey } from "@solana/web3.js";
 
 // Configure ed25519 to use SHA-512
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
@@ -16,6 +15,57 @@ export enum OrderIntentSide {
   BUY = "Buy",
   SELL = "Sell",
 }
+
+/**
+ * Represents an order intent in the Fermi DEX system
+ */
+export interface OrderIntent {
+  order_id: number;
+  owner: string;
+  side: OrderIntentSide;
+  price: number;
+  quantity: number;
+  expiry: number;
+  base_mint: string;
+  quote_mint: string;
+}
+
+/**
+ * Parameters required for placing an order intent
+ */
+export interface PlaceOrderIntentParams {
+  price: number;
+  quantity: number;
+  side: OrderIntentSide;
+  ownerKeypair: Keypair;
+  expiry?: number;
+  orderId?: number;
+  baseMint: PublicKey;
+  quoteMint: PublicKey;
+}
+
+/**
+ * API response structure for successful order placement
+ */
+interface OrderPlacementSuccess {
+  code: 200;
+  message: string;
+  data: {
+    order_id: number;
+    status: string;
+  };
+}
+
+/**
+ * API response structure for errors
+ */
+interface OrderPlacementError {
+  code: number;
+  message: string;
+  error: string;
+}
+
+type OrderPlacementResponse = OrderPlacementSuccess | OrderPlacementError;
 
 /**
  * FermiHybridClient is the main client for interacting with the Fermi DEX.
@@ -114,14 +164,13 @@ export class FermiHybridClient {
    * Submits a signed order intent to the Fermi DEX Sequencer
    * @param orderIntent - The order intent to submit
    * @param signature - The signature proving ownership
-   * @returns Promise<any> - The response from the DEX
+   * @returns Promise<OrderPlacementResponse> - The response from the DEX
    * @throws Error if submission fails
    */
   async submitOrderIntent(
     orderIntent: OrderIntent,
     signature: Uint8Array
-  ): Promise<any> {
-    // Convert binary signature to hex for API submission
+  ): Promise<OrderPlacementResponse> {
     const signatureHex = Buffer.from(signature).toString("hex");
 
     const body = {
@@ -135,13 +184,15 @@ export class FermiHybridClient {
       body: JSON.stringify(body),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
       throw new Error(
-        `Failed to submit order intent: ${errorData?.message || response.statusText}`
+        `Failed to submit order intent: ${data?.message || response.statusText}`
       );
     }
-    return response.json();
+
+    return data;
   }
 
   /**
@@ -192,12 +243,17 @@ export class FermiHybridClient {
     price,
     quantity,
     ownerKeypair,
+    baseMint,
+    quoteMint,
   }: PlaceOrderIntentParams): void {
     if (price <= 0 || quantity <= 0) {
       throw new Error("Price and quantity must be positive");
     }
     if (!ownerKeypair) {
       throw new Error("Owner keypair is required");
+    }
+    if (!baseMint || !quoteMint) {
+      throw new Error("Base mint and quote mint are required");
     }
   }
 
@@ -214,6 +270,8 @@ export class FermiHybridClient {
     expiry,
     orderId,
     ownerKeypair,
+    baseMint,
+    quoteMint,
   }: PlaceOrderIntentParams): OrderIntent {
     return {
       price,
@@ -222,6 +280,8 @@ export class FermiHybridClient {
       side,
       owner: ownerKeypair.publicKey.toBase58(),
       expiry: expiry ?? Math.floor(Date.now() / 1000) + 60 * 60, // Default 1 hour expiry
+      base_mint: baseMint.toBase58(),
+      quote_mint: quoteMint.toBase58(),
     };
   }
 

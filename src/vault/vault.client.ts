@@ -8,7 +8,7 @@ import {
   Commitment,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { sendTransaction } from "../utils";
 
 export interface LiquidityVaultClientOptions {
@@ -143,13 +143,8 @@ export class LiquidityVaultClient {
     user: PublicKey = this.walletPk
   ) {
     const [vaultState] = await this.getVaultStatePDA(vault);
-    const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
     const [userState] = await this.getUserStatePDA(user, vault);
-    const vaultTokenAccount = await getAssociatedTokenAddress(
-      vault,
-      vaultAuthority,
-      true
-    );
+    const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
 
     const ix = await this.program.methods
       .deposit(user, new BN(amount))
@@ -180,11 +175,7 @@ export class LiquidityVaultClient {
     const [vaultState] = await this.getVaultStatePDA(vault);
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
     const [userState] = await this.getUserStatePDA(user, vault);
-    const vaultTokenAccount = await getAssociatedTokenAddress(
-      vault,
-      vaultAuthority,
-      true
-    );
+    const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
 
     const ix = await this.program.methods
       .withdraw(user, new BN(amount))
@@ -216,11 +207,7 @@ export class LiquidityVaultClient {
     const [vaultState] = await this.getVaultStatePDA(vault);
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
     const [userState] = await this.getUserStatePDA(user, vault);
-    const vaultTokenAccount = await getAssociatedTokenAddress(
-      vault,
-      vaultAuthority,
-      true
-    );
+    const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
 
     const ix = await this.program.methods
       .takeTokens(user, new BN(amount))
