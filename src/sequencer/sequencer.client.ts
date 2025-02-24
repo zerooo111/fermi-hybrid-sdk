@@ -5,6 +5,15 @@ import { OrderIntent, PlaceOrderIntentParams } from "../types";
 const FERMI_DEX_ORDER_PREFIX = "FRM_DEX_ORDER:";
 
 /**
+ * Represents the side of an order in the Fermi DEX.
+ * Orders can either be buy orders (bids) or sell orders (asks).
+ */
+export enum OrderIntentSide {
+  BUY = "Buy",
+  SELL = "Sell",
+}
+
+/**
  * FermiHybridClient is the main client for interacting with the Fermi DEX.
  * It provides functionality for:
  * - Order placement and management
