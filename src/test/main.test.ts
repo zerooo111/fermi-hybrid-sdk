@@ -9,6 +9,8 @@ import {
 } from "./constants";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
+import { createMint, getLocalKeypair } from "../utils";
+import { checkOrCreateAssociatedTokenAccount } from "../utils/helpers";
 
 console.log("main.test.ts");
 
@@ -19,54 +21,38 @@ console.log("constants:", {
   quoteMint: QUOTE_MINT.toBase58(),
 });
 
-const createVaultAndDepositTokens = async (owner: Keypair, mint: PublicKey) => {
-  console.log("CreateVaultAndDepositTokens", { owner, mint });
+const main = async () => {
+  // 1. Create liquidity vaults for base and quote mints
+  // await createVaultAndDepositTokens(DEREK_KEYPAIR, BASE_MINT);
+  // await createVaultAndDepositTokens(DEREK_KEYPAIR, QUOTE_MINT);
+  const derek = getLocalKeypair("keypairs/Derek_keypair.json");
+  const charles = getLocalKeypair("keypairs/Charles_keypair.json");
   const connection = new Connection(
     "https://api.devnet.solana.com",
-    "confirmed"
+    "finalized"
   );
 
-  const wallet = new Wallet(owner);
-
+  const wallet = new Wallet(charles);
   const provider = new AnchorProvider(connection, wallet, connection);
 
-  const liquidityVaultClient = new LiquidityVaultClient(
+  const client = new LiquidityVaultClient(provider, VAULT_PROGRAM_ID);
+
+  const derivedAtaForCharles = await checkOrCreateAssociatedTokenAccount(
     provider,
-    VAULT_PROGRAM_ID
+    new PublicKey("GqwCeeTTsE48fZMWzFy26PCVucgvaP9Dsct1uY4y7e8R"),
+    charles.publicKey
   );
 
-  console.log("mint:", mint.toBase58());
+  console.log("derivedAtaForCharles:", derivedAtaForCharles);
 
-  const vaultPk = await liquidityVaultClient.createVault(
-    mint,
-    VAULT_PROGRAM_ID
-  );
-  console.log("created vault:", vaultPk);
-
-  console.log("getting user token account");
-
-  const userTokenAccount = await getAssociatedTokenAddress(
-    mint,
-    owner.publicKey,
-    true
-  );
-
-  console.log("userTokenAccount:", userTokenAccount.toBase58());
-
-  const deposit = await liquidityVaultClient.deposit(
+  const deposit = await client.deposit(
     1000000000,
-    new PublicKey(vaultPk),
-    userTokenAccount,
-    owner.publicKey
+    new PublicKey("GqwCeeTTsE48fZMWzFy26PCVucgvaP9Dsct1uY4y7e8R"),
+    new PublicKey(derivedAtaForCharles),
+    charles.publicKey
   );
 
   console.log("deposit:", deposit);
-};
-
-const main = async () => {
-  // 1. Create liquidity vaults for base and quote mints
-  await createVaultAndDepositTokens(DEREK_KEYPAIR, BASE_MINT);
-  await createVaultAndDepositTokens(DEREK_KEYPAIR, QUOTE_MINT);
 };
 
 main();

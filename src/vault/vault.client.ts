@@ -86,10 +86,10 @@ export class LiquidityVaultClient {
    */
   async getUserStatePDA(
     user: PublicKey,
-    vault: PublicKey
+    vaultState: PublicKey
   ): Promise<[PublicKey, number]> {
     return PublicKey.findProgramAddress(
-      [Buffer.from("user_state"), user.toBuffer(), vault.toBuffer()],
+      [Buffer.from("user_state"), vault.toBuffer(), user.toBuffer()],
       this.programId
     );
   }
@@ -104,7 +104,7 @@ export class LiquidityVaultClient {
   /**
    * Initialize a new vault for a given token mint
    */
-  async createVault(tokenMint: PublicKey, whitelistedProgram: PublicKey) {
+  async createVault(tokenMint: PublicKey) {
     const [vaultState] = await this.getVaultStatePDA(tokenMint);
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
     const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
@@ -116,6 +116,9 @@ export class LiquidityVaultClient {
       payer: this.walletPk.toBase58(),
     });
 
+    const whitelistedProgram = new PublicKey(
+      "6M1y4LyDza134J7WudXsQsWq2urwDxnbdvDV8ReoSrTc"
+    );
     const ix = await this.program.methods
       .initialize(whitelistedProgram)
       .accounts({
@@ -143,8 +146,15 @@ export class LiquidityVaultClient {
     user: PublicKey = this.walletPk
   ) {
     const [vaultState] = await this.getVaultStatePDA(vault);
-    const [userState] = await this.getUserStatePDA(user, vault);
+    const [userState] = await this.getUserStatePDA(user, vaultState);
     const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
+
+    console.log({
+      vaultState: vaultState.toBase58(),
+      userState: userState.toBase58(),
+      vaultTokenAccount: vaultTokenAccount.toBase58(),
+      payer: this.walletPk.toBase58(),
+    });
 
     const ix = await this.program.methods
       .deposit(user, new BN(amount))
@@ -176,6 +186,13 @@ export class LiquidityVaultClient {
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
     const [userState] = await this.getUserStatePDA(user, vault);
     const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
+
+    console.log({
+      vaultState: vaultState.toBase58(),
+      vaultAuthority: vaultAuthority.toBase58(),
+      vaultTokenAccount: vaultTokenAccount.toBase58(),
+      payer: this.walletPk.toBase58(),
+    });
 
     const ix = await this.program.methods
       .withdraw(user, new BN(amount))
@@ -230,8 +247,8 @@ export class LiquidityVaultClient {
   /**
    * Get vault state info
    */
-  async getVaultState(vault: PublicKey) {
-    const [vaultState] = await this.getVaultStatePDA(vault);
+  async getVaultState(tokenMint: PublicKey) {
+    const [vaultState] = await this.getVaultStatePDA(tokenMint);
     return await this.program.account.vaultState.fetch(vaultState);
   }
 
