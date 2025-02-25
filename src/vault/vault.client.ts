@@ -1,4 +1,4 @@
-import { Program, BN } from "@coral-xyz/anchor";
+import { Program, BN, Wallet } from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { FermiVault, IDL } from "./fermi_vault";
 import {
@@ -7,6 +7,8 @@ import {
   SYSVAR_RENT_PUBKEY,
   Commitment,
   TransactionInstruction,
+  Keypair,
+  Connection,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { sendTransaction } from "../utils";
@@ -22,18 +24,29 @@ export interface LiquidityVaultClientOptions {
 export class LiquidityVaultClient {
   program: Program<FermiVault>;
   walletPk: PublicKey;
+  provider: AnchorProvider;
   private readonly postSendTxCallback?: ({ txid }: { txid: string }) => void;
   private readonly txConfirmationCommitment: Commitment;
 
   constructor(
-    public provider: AnchorProvider,
+    public owner: Keypair,
     public programId: PublicKey,
     opts: LiquidityVaultClientOptions = {}
   ) {
-    this.program = new Program(IDL, programId, provider);
-    this.provider = provider;
-    this.walletPk = provider.wallet.publicKey;
-    this.postSendTxCallback = opts?.postSendTxCallback;
+    this.provider = new AnchorProvider(
+      new Connection("https://api.devnet.solana.com"),
+      new Wallet(owner),
+      AnchorProvider.defaultOptions()
+    );
+
+    this.program = new Program(IDL, programId, this.provider);
+    this.walletPk = this.provider.wallet.publicKey;
+    this.postSendTxCallback =
+      opts?.postSendTxCallback ??
+      (({ txid }) => {
+        console.log("txid:", txid);
+        console.log("Solana Explorer:", `https://explorer.solana.com/tx/${txid}?cluster=devnet`);
+      });
     this.txConfirmationCommitment = opts?.commitment ?? "processed";
   }
 
@@ -133,7 +146,9 @@ export class LiquidityVaultClient {
       })
       .instruction();
 
-    return this.sendAndConfirmTransaction([ix]);
+    await this.sendAndConfirmTransaction([ix]);
+
+    return vaultState;
   }
 
   /**
@@ -141,11 +156,11 @@ export class LiquidityVaultClient {
    */
   async deposit(
     amount: number | BN,
-    vault: PublicKey,
+    tokenMint: PublicKey,
     userTokenAccount: PublicKey,
     user: PublicKey = this.walletPk
   ) {
-    const [vaultState] = await this.getVaultStatePDA(vault);
+    const [vaultState] = await this.getVaultStatePDA(tokenMint);
     const [userState] = await this.getUserStatePDA(user, vaultState);
     const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
 
