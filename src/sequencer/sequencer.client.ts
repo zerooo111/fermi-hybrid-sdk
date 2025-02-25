@@ -1,31 +1,22 @@
 import * as ed from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha512";
 import { Keypair, PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
+import { OrderIntent } from "./OrderIntent.js";
+import { OrderSide } from "./OrderIntent.js";
 
 // Configure ed25519 to use SHA-512
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
 const FERMI_DEX_ORDER_PREFIX = "FRM_DEX_ORDER:";
 
-/**
- * Represents the side of an order in the Fermi DEX.
- * Orders can either be buy orders (bids) or sell orders (asks).
- */
-export enum OrderIntentSide {
-  BUY = "Buy",
-  SELL = "Sell",
-}
-
-/**
- * Represents an order intent in the Fermi DEX system
- */
-export interface OrderIntent {
-  order_id: number;
+export interface OrderIntentJSON {
+  orderId: string;
   owner: string;
-  side: OrderIntentSide;
-  price: number;
-  quantity: number;
-  expiry: number;
+  side: OrderSide;
+  price: string;
+  quantity: string;
+  expiry: string;
   base_mint: string;
   quote_mint: string;
 }
@@ -36,7 +27,7 @@ export interface OrderIntent {
 export interface PlaceOrderIntentParams {
   price: number;
   quantity: number;
-  side: OrderIntentSide;
+  side: OrderSide;
   ownerKeypair: Keypair;
   expiry?: number;
   orderId?: number;
@@ -174,7 +165,7 @@ export class FermiSequencerClient {
     const signatureHex = Buffer.from(signature).toString("hex");
 
     const body = {
-      intent: orderIntent,
+      intent: orderIntent.toJSON(),
       signature: signatureHex,
     };
 
@@ -193,43 +184,6 @@ export class FermiSequencerClient {
     }
 
     return data;
-  }
-
-  /**
-   * Main method for placing an order on the Fermi DEX
-   * Handles the entire flow:
-   * 1. Validates the order parameters
-   * 2. Creates the order intent
-   * 3. Signs and verifies the intent
-   * 4. Submits to the DEX
-   *
-   * @param props - Order parameters including price, quantity, side, and keypair
-   * @returns Promise<OrderIntent> - The created and submitted order
-   * @throws Error if any step fails
-   */
-  async placeOrderIntent(props: PlaceOrderIntentParams): Promise<any> {
-    try {
-      this.validateOrderIntent(props);
-
-      const orderIntent = this.createOrderIntent(props);
-
-      // Encode the order intent with the Fermi DEX prefix for signing
-      const encodedMessage = this.encodeMessageWithPrefix(
-        JSON.stringify(orderIntent, null, 2)
-      );
-
-      const signature = this.signAndVerifyMessage(
-        encodedMessage,
-        props.ownerKeypair
-      );
-
-      await this.submitOrderIntent(orderIntent, signature);
-
-      return orderIntent;
-    } catch (error) {
-      console.error("Failed to place order:", error);
-      throw error;
-    }
   }
 
   /**
@@ -259,9 +213,6 @@ export class FermiSequencerClient {
 
   /**
    * Creates an order intent object from the provided parameters
-   * Handles default values for optional fields:
-   * - orderId: current timestamp + price if not provided
-   * - expiry: 1 hour from now if not provided
    */
   private createOrderIntent({
     price,
@@ -273,32 +224,74 @@ export class FermiSequencerClient {
     baseMint,
     quoteMint,
   }: PlaceOrderIntentParams): OrderIntent {
-    return {
-      price,
-      quantity,
-      order_id: orderId ?? Date.now() + price,
+    return new OrderIntent(
+      new BN(orderId ?? Date.now() + price),
+      ownerKeypair.publicKey,
       side,
-      owner: ownerKeypair.publicKey.toBase58(),
-      expiry: expiry ?? Math.floor(Date.now() / 1000) + 60 * 60, // Default 1 hour expiry
-      base_mint: baseMint.toBase58(),
-      quote_mint: quoteMint.toBase58(),
-    };
+      new BN(price),
+      new BN(quantity),
+      new BN(expiry ?? Math.floor(Date.now() / 1000) + 60 * 60),
+      baseMint,
+      quoteMint
+    );
   }
 
   /**
-   * Encodes a message with the Fermi DEX prefix
-   * This is required by the protocol to prevent message signing attacks
-   * @param input - Message to encode
-   * @returns Uint8Array - Prefixed and encoded message
+   * Encodes a message with the Fermi DEX prefix using Borsh serialization
    */
-  private encodeMessageWithPrefix(input: string): Uint8Array {
-    const message = this.textEncoder.encode(input);
-    const prefix = this.textEncoder.encode(FERMI_DEX_ORDER_PREFIX);
-    const fullMessage = new Uint8Array(prefix.length + message.length);
+  private encodeMessageWithPrefix(orderIntent: OrderIntent): Uint8Array {
+    const serializedData = OrderIntent.serialize(orderIntent);
+    const prefix = Buffer.from(FERMI_DEX_ORDER_PREFIX);
+    const fullMessage = Buffer.concat([prefix, serializedData]);
+    return new Uint8Array(fullMessage);
+  }
 
-    fullMessage.set(prefix);
-    fullMessage.set(message, prefix.length);
+  /**
+   * Deserializes an order intent from a buffer
+   */
+  deserializeOrderIntent(buffer: Buffer): OrderIntent {
+    return OrderIntent.deserialize(buffer);
+  }
 
-    return fullMessage;
+  /**
+   * Main method for placing an order on the Fermi DEX
+   * Handles the entire flow:
+   * 1. Validates the order parameters
+   * 2. Creates the order intent
+   * 3. Signs and verifies the intent
+   * 4. Submits to the DEX
+   *
+   * @param props - Order parameters including price, quantity, side, and keypair
+   * @returns Promise<OrderIntent> - The created and submitted order
+   * @throws Error if any step fails
+   */
+  async placeOrderIntent(props: PlaceOrderIntentParams): Promise<any> {
+    try {
+      this.validateOrderIntent(props);
+
+      const orderIntent = this.createOrderIntent(props);
+
+      // Encode the order intent with the Fermi DEX prefix for signing using Borsh
+      const encodedMessage = this.encodeMessageWithPrefix(orderIntent);
+      
+      console.log({
+        encodedMessage: Buffer.from(encodedMessage).toString("hex"),
+      });
+
+      const signature = this.signAndVerifyMessage(
+        encodedMessage,
+        props.ownerKeypair
+      );
+
+      console.log({ signature: Buffer.from(signature).toString("hex") });
+      const response = await this.submitOrderIntent(orderIntent, signature);
+
+      console.log({ response });
+
+      return orderIntent;
+    } catch (error) {
+      console.error("Failed to place order:", error);
+      throw error;
+    }
   }
 }
