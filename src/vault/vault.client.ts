@@ -89,7 +89,7 @@ export class LiquidityVaultClient {
     vaultState: PublicKey
   ): Promise<[PublicKey, number]> {
     return PublicKey.findProgramAddress(
-      [Buffer.from("user_state"), vault.toBuffer(), user.toBuffer()],
+      [Buffer.from("user_state"), vaultState.toBuffer(), user.toBuffer()],
       this.programId
     );
   }
