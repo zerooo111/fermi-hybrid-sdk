@@ -16,11 +16,11 @@ export const CHARLES_KEYPAIR = Keypair.fromSecretKey(
 );
 
 export const BASE_MINT = new PublicKey(
-  "9VXJQZVEVMuYBqoXZWeiZymbP6FETsq6npPQZxLkCPSW"
+  "GLYuRh9avWERYZXHNTfz1Cdo3craUF65Ct5EUDLHeVAA"
 );
 
 export const QUOTE_MINT = new PublicKey(
-  "Drfmg6JxU95x3P6H6seKakMUmJ2G3vZBUJ5puyQTUNij"
+  "3ZKxAAeMb2KVspkioJy8R1jfpnvSc2WF7hwihgQPxzyJ"
 );
 
 export const VAULT_PROGRAM_ID = new PublicKey(

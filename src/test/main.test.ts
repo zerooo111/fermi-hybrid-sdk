@@ -11,6 +11,8 @@ import { AnchorProvider, BN, Wallet } from "@coral-xyz/anchor";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { createMint, getLocalKeypair } from "../utils";
 import { checkOrCreateAssociatedTokenAccount, mintTo } from "../utils/helpers";
+import { FermiSequencerClient } from "../sequencer/sequencer.client.js";
+import { OrderIntentSide } from "../../dist/index.cjs";
 
 console.log("main.test.ts");
 
@@ -88,6 +90,27 @@ const CONSTS = {
   },
 };
 
+const placeBuyOrder = async (
+  sequencerClient: FermiSequencerClient,
+  liquidityVaultClient: LiquidityVaultClient,
+  baseMint: PublicKey,
+  quoteMint: PublicKey
+) => {
+  const orderIntent = await sequencerClient.placeOrderIntent({
+    price: 1000,
+    quantity: 10,
+    side: OrderIntentSide.BUY,
+    ownerKeypair: liquidityVaultClient.owner,
+    baseMint,
+    quoteMint,
+  });
+
+  console.log("orderIntent:", orderIntent);
+
+  const tx = await sequencerClient.placeOrderIntent(orderIntent);
+
+  console.log("tx:", tx);
+};
 const main = async () => {
   // 1. Create liquidity vaults for base and quote mints
 
@@ -103,7 +126,10 @@ const main = async () => {
   //   vaultPk: derekVaultPk,
   // } = await createMintAndVault(derekClient);
 
-  await depositTokens(derekClient, CONSTS.derek.mint);
+  let baseMint = CONSTS.derek.mint;
+  let quoteMint = CONSTS.charles.mint;
+  const sequencerClient = new FermiSequencerClient();
+  // await depositTokens(derekClient, CONSTS.derek.mint);
 
   console.log("CHARLES FLOW");
 
@@ -114,9 +140,14 @@ const main = async () => {
   //   vaultPk: charlesVaultPk,
   // } = await createMintAndVault(charlesClient);
 
-  await depositTokens(charlesClient, CONSTS.charles.mint);
+  // await depositTokens(charlesClient, CONSTS.charles.mint);
 
-  console.log("DONE");
+  await placeBuyOrder(
+    sequencerClient,
+    charlesClient,
+    CONSTS.charles.mint,
+    CONSTS.derek.mint
+  );
 };
 
 main();

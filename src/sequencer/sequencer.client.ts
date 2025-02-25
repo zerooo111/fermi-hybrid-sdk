@@ -77,7 +77,7 @@ type OrderPlacementResponse = OrderPlacementSuccess | OrderPlacementError;
  * The client uses Ed25519 for cryptographic operations and implements
  * the Fermi DEX protocol for order submission.
  */
-export class FermiHybridClient {
+export class FermiSequencerClient {
   private baseUrl: string;
   // TextEncoder is used for converting strings to Uint8Array for cryptographic operations
   private textEncoder = new TextEncoder();
