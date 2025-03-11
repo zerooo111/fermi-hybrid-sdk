@@ -13,7 +13,7 @@ import { FermiSequencerClient } from "../sequencer/sequencer.client.ts";
 console.log("Fetching constants");
 
 const CONSTANTS = {
-  API_BASE_URL: "http://54.80.177.213:8081",
+  API_BASE_URL: "http://54.80.177.213:8082",
 
   CONNECTION: new Connection("https://api.devnet.solana.com"),
 
@@ -165,57 +165,57 @@ const main = async () => {
 
   // PART 1 : Create and airdrop tokens -- Skip this part if you have already created the mints
 
-  // console.log("Creating Base Mint ");
-  // const baseMint = await createMintAndAirdrop(authority, [
-  //   CONSTANTS.CHARLES_KEYPAIR.publicKey,
-  //   CONSTANTS.DEREK_KEYPAIR.publicKey,
-  // ]);
+   console.log("Creating Base Mint ");
+   const baseMint = await createMintAndAirdrop(authority, [
+     CONSTANTS.CHARLES_KEYPAIR.publicKey,
+    CONSTANTS.DEREK_KEYPAIR.publicKey,
+   ]);
 
-  // console.log("BASE MINT CREATED: ", baseMint.toBase58());
-  // console.log("-------------------------------------");
-  // console.log("Creating Quote Mint");
+   console.log("BASE MINT CREATED: ", baseMint.toBase58());
+   console.log("-------------------------------------");
+   console.log("Creating Quote Mint");
 
-  // const quoteMint = await createMintAndAirdrop(authority, [
-  //   CONSTANTS.CHARLES_KEYPAIR.publicKey,
-  //   CONSTANTS.DEREK_KEYPAIR.publicKey,
-  // ]);
+   const quoteMint = await createMintAndAirdrop(authority, [
+     CONSTANTS.CHARLES_KEYPAIR.publicKey,
+    CONSTANTS.DEREK_KEYPAIR.publicKey,
+   ]);
 
-  // console.log("QUOTE MINT CREATED :", quoteMint.toBase58());
-  // console.log("🚀 Script complete");
+   console.log("QUOTE MINT CREATED :", quoteMint.toBase58());
+   console.log("🚀 Script complete");
 
   // Create Vault
 
   // COMMENT these lines if you want to run PART 1 as well
   // UNCOMMENT if you want to skip PART 1
-  let baseMint = CONSTANTS.BASE_MINT;
-  let quoteMint = CONSTANTS.QUOTE_MINT;
+  //let baseMint = CONSTANTS.BASE_MINT;
+  //let quoteMint = CONSTANTS.QUOTE_MINT;
 
   // PART 2 : init vaults
-  // await initTokenVault(authorityVaultClient, baseMint);
-  // await initTokenVault(authorityVaultClient, quoteMint);
+  await initTokenVault(authorityVaultClient, baseMint);
+   await initTokenVault(authorityVaultClient, quoteMint);
 
-  // PART 3 : Deposit Tokens
-  // const derekVaultClient = new LiquidityVaultClient(
-  //   CONSTANTS.DEREK_KEYPAIR,
-  //   CONSTANTS.VAULT_PROGRAM_ID,
-  // );
+   //PART 3 : Deposit Tokens
+   const derekVaultClient = new LiquidityVaultClient(
+     CONSTANTS.DEREK_KEYPAIR,
+     CONSTANTS.VAULT_PROGRAM_ID,
+   );
 
-  // Derek deposits base token
-  // await depositTokensToVault(derekVaultClient, baseMint, 1000);
+   //Derek deposits base token
+   await depositTokensToVault(derekVaultClient, baseMint, 1000);
 
   // Derek deposits quote token
-  // await depositTokensToVault(derekVaultClient, quoteMint, 1000);
+   await depositTokensToVault(derekVaultClient, quoteMint, 1000);
 
-  // const charlesVaultClient = new LiquidityVaultClient(
-  //   CONSTANTS.CHARLES_KEYPAIR,
-  //   CONSTANTS.VAULT_PROGRAM_ID,
-  // );
+   const charlesVaultClient = new LiquidityVaultClient(
+    CONSTANTS.CHARLES_KEYPAIR,
+     CONSTANTS.VAULT_PROGRAM_ID,
+   );
 
   // Charles deposits base token
-  // await depositTokensToVault(charlesVaultClient, baseMint, 1000);
+   await depositTokensToVault(charlesVaultClient, baseMint, 1000);
 
   // Charles deposits quote token
-  // await depositTokensToVault(charlesVaultClient, quoteMint, 1000);
+   await depositTokensToVault(charlesVaultClient, quoteMint, 1000);
 
   // PART 4: Place Order -- Derek buys , Charles sells
 
@@ -229,33 +229,33 @@ const main = async () => {
   console.log(orderbook);
   // console.log("Order Book : ", orderbook);
 
-  // Derek places buy order
-  // sequencer.placeOrderIntent({
-  //   ownerKp: CONSTANTS.DEREK_KEYPAIR,
-  //   order_id: 11,
-  //   price: 2,
-  //   quantity: 2,
-  //   expiry: Date.now() + 60 * 60 * 1000,
-  //   base_mint: baseMint,
-  //   quote_mint: quoteMint,
-  //   side: "Buy",
-  // });
+   //Derek places buy order
+   sequencer.placeOrderIntent({
+     ownerKp: CONSTANTS.DEREK_KEYPAIR,
+     order_id: 11,
+     price: 2,
+     quantity: 2,
+     expiry: Date.now() + 60 * 60 * 1000,
+     base_mint: baseMint,
+     quote_mint: quoteMint,
+     side: "Buy",
+   });
 
-  // Get order book
-  // orderbook = await sequencer.getOrderbook();
+   //Get order book
+   orderbook = await sequencer.getOrderbook();
   //
-  // Charles places sell order
+   //Charles places sell order
 
-  // sequencer.placeOrderIntent({
-  //   ownerKp: CONSTANTS.CHARLES_KEYPAIR,
-  //   order_id: 22,
-  //   price: 2,
-  //   quantity: 2,
-  //   expiry: Date.now() + 60 * 60 * 1000,
-  //   base_mint: baseMint,
-  //   quote_mint: quoteMint,
-  //   side: "Sell",
-  // });
+   sequencer.placeOrderIntent({
+     ownerKp: CONSTANTS.CHARLES_KEYPAIR,
+     order_id: 22,
+     price: 2,
+     quantity: 2,
+     expiry: Date.now() + 60 * 60 * 1000,
+     base_mint: baseMint,
+     quote_mint: quoteMint,
+     side: "Sell",
+   });
 
   orderbook = await sequencer.getOrderbook();
   console.log(orderbook);
