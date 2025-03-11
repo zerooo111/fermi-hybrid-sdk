@@ -14,25 +14,27 @@ console.log("Fetching constants");
 
 const CONSTANTS = {
   API_BASE_URL: "http://54.80.177.213:8081",
+
   CONNECTION: new Connection("https://api.devnet.solana.com"),
+
   VAULT_PROGRAM_ID: new PublicKey(
-    "2AcUsdsFXdUfKm5pd7JLQqNAKhgsZZz7e8Pc7E6Dowbx",
+    "CVB232NjzFcJUAcaEsbqTTAwGah37MYor57Vy97CCEx2",
   ),
-  WHITELISTED_PROGRAM_ID: new PublicKey(
-    "2AcUsdsFXdUfKm5pd7JLQqNAKhgsZZz7e8Pc7E6Dowbx",
-  ),
+
   CHARLES_KEYPAIR: Keypair.fromSecretKey(
     new Uint8Array(
       JSON.parse(fs.readFileSync("keypairs/Charles_keypair.json", "utf-8")),
     ),
   ),
+
   DEREK_KEYPAIR: Keypair.fromSecretKey(
     new Uint8Array(
       JSON.parse(fs.readFileSync("keypairs/Derek_keypair.json", "utf-8")),
     ),
   ),
+
   FERMI_AUTHORITY: new PublicKey(
-    "6M1y4LyDza134J7WudXsQsWq2urwDxnbdvDV8ReoSrTc",
+    "8bHSuk6dpjquTw44vwr3sLukDSMLNkQLTcttGtC5pJtb",
   ),
 
   BASE_MINT: new PublicKey("GZPkitUF1PPUnijGx8NEBPjC1ZR5m8bs1eLH8YtQy3vT"),
@@ -93,6 +95,7 @@ const createMintAndAirdrop = async (
       mintPublicKey,
       recipient,
     );
+
     console.log(`ATA : `, tokenAccount.toBase58());
 
     await mintTo(
@@ -214,13 +217,17 @@ const main = async () => {
   // Charles deposits quote token
   // await depositTokensToVault(charlesVaultClient, quoteMint, 1000);
 
-  console.log("🚀 Script complete");
-
   // PART 4: Place Order -- Derek buys , Charles sells
 
   const sequencer = new FermiSequencerClient({
     baseUrl: CONSTANTS.API_BASE_URL,
   });
+
+  let orderbook;
+
+  orderbook = await sequencer.getOrderbook();
+  console.log(orderbook);
+  console.log("Order Book : ", orderbook);
 
   // Derek places buy order
   sequencer.placeOrderIntent({
@@ -235,8 +242,8 @@ const main = async () => {
   });
 
   // Get order book
-  let orderBook = await sequencer.getOrderbook();
-  console.log("Order Book : ", orderBook);
+  orderbook = await sequencer.getOrderbook();
+  console.log("Order Book : ", orderbook);
 
   // Charles places sell order
   //
@@ -250,8 +257,6 @@ const main = async () => {
     quote_mint: quoteMint,
     side: "Sell",
   });
-
-  // check health
 };
 
 main().catch(console.error);

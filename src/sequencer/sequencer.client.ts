@@ -1,11 +1,9 @@
 import * as ed from "@noble/ed25519";
-import { sha512 } from "@noble/hashes/sha512";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { OrderIntent } from "./OrderIntent.ts";
 import { createHash } from "crypto";
-import { sha1 } from "@noble/hashes/sha1";
-import { sha224 } from "@noble/hashes/sha256";
+import { sha512 } from "@noble/hashes/sha512";
 
 // Configure ed25519 to use SHA-512
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
@@ -155,6 +153,7 @@ export class FermiSequencerClient {
     console.log("Local verification passed ");
 
     console.log("sending request to sequencer");
+
     const body = {
       intent: {
         order_id: orderIntent.order_id.toNumber(),

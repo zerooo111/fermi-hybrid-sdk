@@ -130,7 +130,7 @@ export class LiquidityVaultClient {
   async initVault(
     tokenMint: PublicKey,
     whitelistedProgram: PublicKey = new PublicKey(
-      "6M1y4LyDza134J7WudXsQsWq2urwDxnbdvDV8ReoSrTc",
+      "8bHSuk6dpjquTw44vwr3sLukDSMLNkQLTcttGtC5pJtb",
     ),
   ) {
     const [vaultState] = await this.getVaultStatePDA(tokenMint);
