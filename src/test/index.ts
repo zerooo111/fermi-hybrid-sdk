@@ -13,7 +13,7 @@ import { FermiSequencerClient } from "../sequencer/sequencer.client.ts";
 console.log("Fetching constants");
 
 const CONSTANTS = {
-  API_BASE_URL: "http://54.80.177.213:8080",
+  API_BASE_URL: "http://54.80.177.213:8081",
 
   CONNECTION: new Connection("https://api.devnet.solana.com"),
 
@@ -259,4 +259,4 @@ const main = async () => {
   // });
 };
 
-main().catch(console.error);
+main();

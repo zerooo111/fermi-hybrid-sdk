@@ -132,7 +132,7 @@ export class FermiSequencerClient {
 
     // Sign message
     const signatureBytes = ed.sign(
-      sha256Hash_hex,
+      Buffer.from(sha256Hash_hex),
       ownerKp.secretKey.slice(0, 32),
     );
 
@@ -183,7 +183,7 @@ export class FermiSequencerClient {
   }
 
   async getOrderbook() {
-    return await fetch(this.baseUrl + "/orderbook").then((res) => res.json());
+    return await axios.get(this.baseUrl + "/orderbook");
   }
 
   cancelOrderIntent() {}
