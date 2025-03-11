@@ -37,8 +37,8 @@ const CONSTANTS = {
     "8bHSuk6dpjquTw44vwr3sLukDSMLNkQLTcttGtC5pJtb",
   ),
 
-  BASE_MINT: new PublicKey("GZPkitUF1PPUnijGx8NEBPjC1ZR5m8bs1eLH8YtQy3vT"),
-  QUOTE_MINT: new PublicKey("FAkA6wP9qB9fmVjZxsLSWGpJcAVctpFbDztAyKVTdVn9"),
+  BASE_MINT: new PublicKey("2nimYfKCqraVJNr4kCkU7DkpVkNiC7Nd5Nt5wFMsADs7"),
+  QUOTE_MINT: new PublicKey("6yiQJiJe393C9zuPmRjzyr98kU9gsK8nFY6sSR2WCpg9"),
 
   // Add more constants here
 };
@@ -121,13 +121,14 @@ const initTokenVault = async (
   );
 
   // Create vault
-  const data = await client.initVault(tokenMintPublicKey);
-  console.log(JSON.stringify(data, null, 2));
+  //const data = await client.initVault(tokenMintPublicKey);
+  //console.log(JSON.stringify(data, null, 2));
 
   console.log(
     "----✅ VAULT CREATED--------------------------------------------",
   );
-  return data;
+  let data = "123";
+ // return data;
 };
 
 const depositTokensToVault = async (
@@ -166,29 +167,29 @@ const main = async () => {
   // PART 1 : Create and airdrop tokens -- Skip this part if you have already created the mints
 
    console.log("Creating Base Mint ");
-   const baseMint = await createMintAndAirdrop(authority, [
+   const baseMint2 = await createMintAndAirdrop(authority, [
      CONSTANTS.CHARLES_KEYPAIR.publicKey,
     CONSTANTS.DEREK_KEYPAIR.publicKey,
    ]);
 
-   console.log("BASE MINT CREATED: ", baseMint.toBase58());
+   console.log("BASE MINT CREATED: ", baseMint2.toBase58());
    console.log("-------------------------------------");
    console.log("Creating Quote Mint");
 
-   const quoteMint = await createMintAndAirdrop(authority, [
+   const quoteMint2 = await createMintAndAirdrop(authority, [
      CONSTANTS.CHARLES_KEYPAIR.publicKey,
     CONSTANTS.DEREK_KEYPAIR.publicKey,
    ]);
 
-   console.log("QUOTE MINT CREATED :", quoteMint.toBase58());
+   console.log("QUOTE MINT CREATED :", quoteMint2.toBase58());
    console.log("🚀 Script complete");
 
   // Create Vault
 
   // COMMENT these lines if you want to run PART 1 as well
   // UNCOMMENT if you want to skip PART 1
-  //let baseMint = CONSTANTS.BASE_MINT;
-  //let quoteMint = CONSTANTS.QUOTE_MINT;
+  let baseMint = CONSTANTS.BASE_MINT;
+  let quoteMint = CONSTANTS.QUOTE_MINT;
 
   // PART 2 : init vaults
   await initTokenVault(authorityVaultClient, baseMint);
