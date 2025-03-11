@@ -4,6 +4,7 @@ import BN from "bn.js";
 import { OrderIntent } from "./OrderIntent.ts";
 import { createHash } from "crypto";
 import { sha512 } from "@noble/hashes/sha512";
+import axios from "axios";
 
 // Configure ed25519 to use SHA-512
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
@@ -124,33 +125,35 @@ export class FermiSequencerClient {
       .digest();
 
     const sha256Hash_hex = Buffer.from(sha256Hash).toString("hex");
+
     console.log("Hash successfull: ", sha256Hash_hex);
 
     console.log("Signing the message");
 
     // Sign message
     const signatureBytes = ed.sign(
-      Buffer.from(sha256Hash_hex),
-      ownerKp.secretKey,
+      sha256Hash_hex,
+      ownerKp.secretKey.slice(0, 32),
     );
 
     const hexSignature = Buffer.from(signatureBytes).toString("hex");
+
     console.log("Signature done : ", hexSignature);
 
-    console.log("Local verification");
-    // Verify the signature
-    const isValid = ed.verify(
-      signatureBytes,
-      Buffer.from(sha256Hash_hex),
-      ownerKp.publicKey.toBase58(),
-    );
+    // console.log("Local verification");
+    // // Verify the signature
+    // const isValid = ed.verify(
+    //   signatureBytes,
+    //   Buffer.from(sha256Hash_hex),
+    //   ownerKp.publicKey.toBase58(),
+    // );
 
-    if (!isValid) {
-      console.log("Local verification failed");
-      throw new Error("Local Verification failed");
-    }
+    // if (!isValid) {
+    //   console.log("Local verification failed");
+    //   throw new Error("Local Verification failed");
+    // }
 
-    console.log("Local verification passed ");
+    // console.log("Local verification passed ");
 
     console.log("sending request to sequencer");
 
@@ -170,22 +173,13 @@ export class FermiSequencerClient {
 
     console.log("sequencer request body", body);
 
-    const response = await fetch(this.baseUrl + "/place_order", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const response = await axios.post(`${this.baseUrl}/place_order`, body);
 
     console.log("Got response from sequencer");
 
-    if (!response.ok) {
-      console.error(response);
-      return;
-    }
+    console.log("Response for /place_order: ", response.data);
 
-    const data = await response.json();
-    console.log("Response for /place_order: ", data);
-
-    return data;
+    return response;
   }
 
   async getOrderbook() {

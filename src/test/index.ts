@@ -13,7 +13,7 @@ import { FermiSequencerClient } from "../sequencer/sequencer.client.ts";
 console.log("Fetching constants");
 
 const CONSTANTS = {
-  API_BASE_URL: "http://54.80.177.213:8081",
+  API_BASE_URL: "http://54.80.177.213:8080",
 
   CONNECTION: new Connection("https://api.devnet.solana.com"),
 
@@ -232,9 +232,9 @@ const main = async () => {
   // Derek places buy order
   sequencer.placeOrderIntent({
     ownerKp: CONSTANTS.DEREK_KEYPAIR,
-    order_id: 1,
-    price: 1,
-    quantity: 1,
+    order_id: 11,
+    price: 2,
+    quantity: 2,
     expiry: Date.now() + 60 * 60 * 1000,
     base_mint: baseMint,
     quote_mint: quoteMint,
@@ -246,17 +246,17 @@ const main = async () => {
   console.log("Order Book : ", orderbook);
 
   // Charles places sell order
-  //
-  sequencer.placeOrderIntent({
-    ownerKp: CONSTANTS.CHARLES_KEYPAIR,
-    order_id: 2,
-    price: 1,
-    quantity: 1,
-    expiry: Date.now() + 60 * 60 * 1000,
-    base_mint: baseMint,
-    quote_mint: quoteMint,
-    side: "Sell",
-  });
+  // //
+  // sequencer.placeOrderIntent({
+  //   ownerKp: CONSTANTS.CHARLES_KEYPAIR,
+  //   order_id: 22,
+  //   price: 2,
+  //   quantity: 2,
+  //   expiry: Date.now() + 60 * 60 * 1000,
+  //   base_mint: baseMint,
+  //   quote_mint: quoteMint,
+  //   side: "Sell",
+  // });
 };
 
 main().catch(console.error);

@@ -35,6 +35,7 @@
     "@solana/spl-token": "^0.4.12",
     "@solana/web3.js": "^1.98.0",
     "@types/bn.js": "^5.1.6",
+    "axios": "^1.8.2",
     "bn.js": "^5.2.1"
   }
 }
