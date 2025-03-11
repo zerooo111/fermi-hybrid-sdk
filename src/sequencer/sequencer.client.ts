@@ -183,7 +183,12 @@ export class FermiSequencerClient {
   }
 
   async getOrderbook() {
-    return await axios.get(this.baseUrl + "/orderbook");
+    try {
+      const response = await axios.get(this.baseUrl + "/orderbook");
+      return response.data.data;
+    } catch (err) {
+      console.log("Error in getOrderbook: ");
+    }
   }
 
   cancelOrderIntent() {}

@@ -227,26 +227,25 @@ const main = async () => {
 
   orderbook = await sequencer.getOrderbook();
   console.log(orderbook);
-  console.log("Order Book : ", orderbook);
+  // console.log("Order Book : ", orderbook);
 
   // Derek places buy order
-  sequencer.placeOrderIntent({
-    ownerKp: CONSTANTS.DEREK_KEYPAIR,
-    order_id: 11,
-    price: 2,
-    quantity: 2,
-    expiry: Date.now() + 60 * 60 * 1000,
-    base_mint: baseMint,
-    quote_mint: quoteMint,
-    side: "Buy",
-  });
+  // sequencer.placeOrderIntent({
+  //   ownerKp: CONSTANTS.DEREK_KEYPAIR,
+  //   order_id: 11,
+  //   price: 2,
+  //   quantity: 2,
+  //   expiry: Date.now() + 60 * 60 * 1000,
+  //   base_mint: baseMint,
+  //   quote_mint: quoteMint,
+  //   side: "Buy",
+  // });
 
   // Get order book
-  orderbook = await sequencer.getOrderbook();
-  console.log("Order Book : ", orderbook);
-
+  // orderbook = await sequencer.getOrderbook();
+  //
   // Charles places sell order
-  // //
+
   // sequencer.placeOrderIntent({
   //   ownerKp: CONSTANTS.CHARLES_KEYPAIR,
   //   order_id: 22,
@@ -257,6 +256,9 @@ const main = async () => {
   //   quote_mint: quoteMint,
   //   side: "Sell",
   // });
+
+  orderbook = await sequencer.getOrderbook();
+  console.log(orderbook);
 };
 
 main();
