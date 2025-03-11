@@ -1,17 +1,18 @@
-import { Program, BN, Wallet } from "@coral-xyz/anchor";
+import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
-import { FermiVault, IDL } from "./fermi_vault";
+import { type FermiVault, IDL } from "./fermi_vault.ts";
 import {
   PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
-  Commitment,
   TransactionInstruction,
   Keypair,
   Connection,
+  type Commitment,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { sendTransaction } from "../utils";
+import { sendTransaction } from "../utils/rpc.ts";
+import BN from "bn.js";
 
 export interface LiquidityVaultClientOptions {
   postSendTxCallback?: ({ txid }: { txid: string }) => void;
@@ -22,30 +23,39 @@ export interface LiquidityVaultClientOptions {
  * Client for interacting with the Fermi Vault program
  */
 export class LiquidityVaultClient {
-  program: Program<FermiVault>;
-  walletPk: PublicKey;
-  provider: AnchorProvider;
+  public program: anchor.Program<FermiVault>;
+  public walletPk: PublicKey;
+  public provider: AnchorProvider;
   private readonly postSendTxCallback?: ({ txid }: { txid: string }) => void;
   private readonly txConfirmationCommitment: Commitment;
+  public owner: Keypair;
+  public programId: PublicKey;
 
   constructor(
-    public owner: Keypair,
-    public programId: PublicKey,
-    opts: LiquidityVaultClientOptions = {}
+    owner: Keypair,
+    programId: PublicKey,
+    opts: LiquidityVaultClientOptions = {},
   ) {
+    this.owner = owner;
+    this.programId = programId;
     this.provider = new AnchorProvider(
       new Connection("https://api.devnet.solana.com"),
-      new Wallet(owner),
-      AnchorProvider.defaultOptions()
+      new anchor.Wallet(owner),
+      AnchorProvider.defaultOptions(),
     );
 
-    this.program = new Program(IDL, programId, this.provider);
+    this.program = new anchor.Program(IDL, programId, this.provider);
     this.walletPk = this.provider.wallet.publicKey;
     this.postSendTxCallback =
       opts?.postSendTxCallback ??
       (({ txid }) => {
-        console.log("txid:", txid);
-        console.log("Solana Explorer:", `https://explorer.solana.com/tx/${txid}?cluster=devnet`);
+        console.log("~~~~~~~~");
+        console.log("🚀 Tx hash:", txid);
+        console.log(
+          "Solana Explorer Link:",
+          `https://explorer.solana.com/tx/${txid}?cluster=devnet`,
+        );
+        console.log("~~~~~~~~");
       });
     this.txConfirmationCommitment = opts?.commitment ?? "processed";
   }
@@ -53,18 +63,18 @@ export class LiquidityVaultClient {
   /// Transactions
   public async sendAndConfirmTransaction(
     ixs: TransactionInstruction[],
-    opts: any = {}
+    opts: any = {},
   ): Promise<string> {
     try {
       return await sendTransaction(
-        this.program.provider as AnchorProvider,
+        this.provider as AnchorProvider,
         ixs,
         opts.alts ?? [],
         {
           postSendTxCallback: this.postSendTxCallback,
           txConfirmationCommitment: this.txConfirmationCommitment,
           ...opts,
-        }
+        },
       );
     } catch (e) {
       console.log("Error sending transaction", e);
@@ -78,7 +88,7 @@ export class LiquidityVaultClient {
   async getVaultStatePDA(mint: PublicKey): Promise<[PublicKey, number]> {
     return PublicKey.findProgramAddress(
       [Buffer.from("vault_state"), mint.toBuffer()],
-      this.programId
+      this.programId,
     );
   }
 
@@ -86,11 +96,11 @@ export class LiquidityVaultClient {
    * Derives the vault authority PDA address
    */
   async getVaultAuthorityPDA(
-    vaultState: PublicKey
+    vaultState: PublicKey,
   ): Promise<[PublicKey, number]> {
     return PublicKey.findProgramAddress(
       [Buffer.from("vault_authority"), vaultState.toBuffer()],
-      this.programId
+      this.programId,
     );
   }
 
@@ -99,39 +109,34 @@ export class LiquidityVaultClient {
    */
   async getUserStatePDA(
     user: PublicKey,
-    vaultState: PublicKey
+    vaultState: PublicKey,
   ): Promise<[PublicKey, number]> {
     return PublicKey.findProgramAddress(
       [Buffer.from("user_state"), vaultState.toBuffer(), user.toBuffer()],
-      this.programId
+      this.programId,
     );
   }
 
   async getVaultTokenAccount(vaultState: PublicKey) {
     return PublicKey.findProgramAddress(
       [Buffer.from("vault_token_account"), vaultState.toBuffer()],
-      this.programId
+      this.programId,
     );
   }
 
   /**
    * Initialize a new vault for a given token mint
    */
-  async createVault(tokenMint: PublicKey) {
+  async initVault(
+    tokenMint: PublicKey,
+    whitelistedProgram: PublicKey = new PublicKey(
+      "6M1y4LyDza134J7WudXsQsWq2urwDxnbdvDV8ReoSrTc",
+    ),
+  ) {
     const [vaultState] = await this.getVaultStatePDA(tokenMint);
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
     const [vaultTokenAccount] = await this.getVaultTokenAccount(vaultState);
 
-    console.log({
-      vaultState: vaultState.toBase58(),
-      vaultAuthority: vaultAuthority.toBase58(),
-      vaultTokenAccount: vaultTokenAccount.toBase58(),
-      payer: this.walletPk.toBase58(),
-    });
-
-    const whitelistedProgram = new PublicKey(
-      "6M1y4LyDza134J7WudXsQsWq2urwDxnbdvDV8ReoSrTc"
-    );
     const ix = await this.program.methods
       .initialize(whitelistedProgram)
       .accounts({
@@ -146,19 +151,24 @@ export class LiquidityVaultClient {
       })
       .instruction();
 
-    await this.sendAndConfirmTransaction([ix]);
+    const txHash = await this.sendAndConfirmTransaction([ix]);
 
-    return vaultState;
+    return {
+      txHash,
+      vaultState,
+      vaultAuthority,
+      vaultTokenAccount,
+    };
   }
 
   /**
    * Deposit tokens into the vault
    */
   async deposit(
-    amount: number | BN,
+    amount: number,
     tokenMint: PublicKey,
     userTokenAccount: PublicKey,
-    user: PublicKey = this.walletPk
+    user: PublicKey = this.walletPk,
   ) {
     const [vaultState] = await this.getVaultStatePDA(tokenMint);
     const [userState] = await this.getUserStatePDA(user, vaultState);
@@ -192,10 +202,10 @@ export class LiquidityVaultClient {
    * Withdraw tokens from the vault
    */
   async withdraw(
-    amount: number | BN,
+    amount: number,
     vault: PublicKey,
     recipientTokenAccount: PublicKey,
-    user: PublicKey
+    user: PublicKey,
   ) {
     const [vaultState] = await this.getVaultStatePDA(vault);
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);
@@ -231,10 +241,10 @@ export class LiquidityVaultClient {
    * Take tokens from the vault (admin function)
    */
   async takeTokens(
-    amount: number | BN,
+    amount: number,
     vault: PublicKey,
     recipientTokenAccount: PublicKey,
-    user: PublicKey
+    user: PublicKey,
   ) {
     const [vaultState] = await this.getVaultStatePDA(vault);
     const [vaultAuthority] = await this.getVaultAuthorityPDA(vaultState);

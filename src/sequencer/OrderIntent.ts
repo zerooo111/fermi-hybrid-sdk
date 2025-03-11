@@ -1,25 +1,68 @@
-import * as anchor from "@coral-xyz/anchor";
+import BN from "bn.js";
 import { PublicKey } from "@solana/web3.js";
 import * as borsh from "@coral-xyz/borsh";
 
-const { BN } = anchor.default;
+export class CancelOrderIntent {
+  public order_id: BN;
+  public owner: PublicKey;
 
-export enum OrderSide {
-  BUY = "Buy",
-  SELL = "Sell",
+  constructor(order_id: BN, owner: PublicKey) {
+    this.order_id = order_id;
+    this.owner = owner;
+  }
+
+  static layout() {
+    return borsh.struct([borsh.u64("order_id"), borsh.publicKey("owner")]);
+  }
+
+  static serialize(cancelOrderIntent: CancelOrderIntent) {
+    const buffer = Buffer.alloc(CancelOrderIntent.layout().span);
+    CancelOrderIntent.layout().encode(cancelOrderIntent, buffer);
+    return buffer;
+  }
+
+  static deserialize(buffer: Buffer): CancelOrderIntent {
+    const decoded = CancelOrderIntent.layout().decode(buffer);
+    return decoded;
+  }
+
+  toJSON() {
+    return {
+      order_id: Number(this.order_id),
+      owner: this.owner.toBase58(),
+    };
+  }
 }
 
 export class OrderIntent {
+  order_id: BN;
+  owner: PublicKey;
+  side: "Buy" | "Sell";
+  price: BN;
+  quantity: BN;
+  expiry: BN;
+  base_mint: PublicKey;
+  quote_mint: PublicKey;
+
   constructor(
-    public readonly order_id: typeof BN,
-    public readonly owner: PublicKey,
-    public readonly side: OrderSide,
-    public readonly price: typeof BN,
-    public readonly quantity: typeof BN,
-    public readonly expiry: typeof BN,
-    public readonly base_mint: PublicKey,
-    public readonly quote_mint: PublicKey
-  ) {}
+    order_id: BN,
+    owner: PublicKey,
+    side: "Buy" | "Sell",
+    price: BN,
+    quantity: BN,
+    expiry: BN,
+    base_mint: PublicKey,
+    quote_mint: PublicKey,
+  ) {
+    this.order_id = order_id;
+    this.owner = owner;
+    this.side = side;
+    this.price = price;
+    this.quantity = quantity;
+    this.expiry = expiry;
+    this.base_mint = base_mint;
+    this.quote_mint = quote_mint;
+  }
 
   static layout(property?: string) {
     return borsh.struct(
@@ -33,29 +76,28 @@ export class OrderIntent {
         borsh.publicKey("base_mint"),
         borsh.publicKey("quote_mint"),
       ],
-      property
+      property,
     );
   }
 
   static serialize(orderIntent: OrderIntent) {
     const buffer = Buffer.alloc(OrderIntent.layout().span);
-    OrderIntent.layout().encode(orderIntent, buffer);
+    const sideValue = orderIntent.side === "Buy" ? 0 : 1;
+    const serializable = {
+      ...orderIntent,
+      side: sideValue,
+    };
+    OrderIntent.layout().encode(serializable, buffer);
     return buffer;
   }
 
-
   static deserialize(buffer: Buffer): OrderIntent {
     const decoded = OrderIntent.layout().decode(buffer);
-    return new OrderIntent(
-      new BN(decoded.order_id),
-      new PublicKey(decoded.owner),
-      decoded.side === 0 ? OrderSide.BUY : OrderSide.SELL,
-      new BN(decoded.price),
-      new BN(decoded.quantity),
-      new BN(decoded.expiry),
-      new PublicKey(decoded.base_mint),
-      new PublicKey(decoded.quote_mint)
-    );
+    // Convert the numeric side back to string
+
+    return {
+      ...decoded,
+    } as OrderIntent;
   }
 
   toJSON() {

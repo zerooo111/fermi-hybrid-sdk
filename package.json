@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "test": "node --experimental-specifier-resolution=node --loader ts-node/esm ./src/sequencer/sequencer.test.ts",
+    "test": "node --experimental-strip-types  ./src/test/index.ts",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
@@ -22,7 +22,6 @@
     "@typescript-eslint/parser": "^7.1.0",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
-    "ts-node": "^10.9.1",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   },
@@ -34,6 +33,8 @@
     "@coral-xyz/borsh": "^0.30.1",
     "@noble/hashes": "^1.3.3",
     "@solana/spl-token": "^0.4.12",
-    "@solana/web3.js": "^1.98.0"
+    "@solana/web3.js": "^1.98.0",
+    "@types/bn.js": "^5.1.6",
+    "bn.js": "^5.2.1"
   }
 }

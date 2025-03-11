@@ -30,14 +30,14 @@ export async function getAssociatedTokenAddress(
   owner: PublicKey,
   allowOwnerOffCurve = true,
   programId = TOKEN_PROGRAM_ID,
-  associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
+  associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID,
 ): Promise<PublicKey> {
   if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer()))
     throw new Error("TokenOwnerOffCurve!");
 
   const [address] = await PublicKey.findProgramAddress(
     [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
-    associatedTokenProgramId
+    associatedTokenProgramId,
   );
 
   return address;
@@ -46,7 +46,7 @@ export async function getAssociatedTokenAddress(
 export async function createAssociatedTokenAccountIdempotentInstruction(
   payer: PublicKey,
   owner: PublicKey,
-  mint: PublicKey
+  mint: PublicKey,
 ): Promise<TransactionInstruction> {
   const account = await getAssociatedTokenAddress(mint, owner);
   return new TransactionInstruction({
@@ -70,7 +70,7 @@ export async function createAssociatedTokenAccountIdempotentInstruction(
 export const createMint = async (
   provider: anchor.AnchorProvider,
   mint: anchor.web3.Keypair,
-  decimal: number
+  decimal: number,
 ): Promise<void> => {
   try {
     // const programId = getDevPgmId();
@@ -83,17 +83,17 @@ export const createMint = async (
         newAccountPubkey: mint.publicKey,
         space: spl.MintLayout.span,
         lamports: await provider.connection.getMinimumBalanceForRentExemption(
-          spl.MintLayout.span
+          spl.MintLayout.span,
         ),
-      })
+      }),
     );
     tx.add(
       spl.createInitializeMintInstruction(
         mint.publicKey,
         decimal,
         provider.wallet.publicKey,
-        provider.wallet.publicKey
-      )
+        provider.wallet.publicKey,
+      ),
     );
     await provider.sendAndConfirm(tx, [mint]);
   } catch (err: any) {
@@ -105,8 +105,8 @@ export const createMint = async (
 export const checkOrCreateAssociatedTokenAccount = async (
   provider: anchor.AnchorProvider,
   mint: anchor.web3.PublicKey,
-  owner: anchor.web3.PublicKey
-): Promise<string> => {
+  owner: anchor.web3.PublicKey,
+): Promise<PublicKey> => {
   // Find the ATA for the given mint and owner
   const ata = await spl.getAssociatedTokenAddress(mint, owner, false);
 
@@ -114,21 +114,20 @@ export const checkOrCreateAssociatedTokenAccount = async (
   const accountInfo = await provider.connection.getAccountInfo(ata);
 
   if (accountInfo == null) {
-    // ATA does not exist, create it
-    console.log("Creating Associated Token Account for user...");
+    // ATA does not exist,
+    console.log("////////////////");
+    console.log("ATA account not found for ", owner.toBase58());
+    console.log("Creating ATA account for ", owner.toBase58());
     await createAssociatedTokenAccount(provider, mint, ata, owner);
-    console.log("Associated Token Account created successfully.");
-  } else {
-    // ATA already exists
-    console.log("Associated Token Account already exists.");
+    console.log("////////////////");
   }
 
-  return ata.toBase58();
+  return ata;
 };
 
 export async function checkMintOfATA(
   connection: Connection,
-  ataAddress: anchor.Address
+  ataAddress: anchor.Address,
 ): Promise<string> {
   try {
     const ataInfo = await connection.getAccountInfo(new PublicKey(ataAddress));
@@ -149,7 +148,7 @@ export const createAssociatedTokenAccount = async (
   provider: anchor.AnchorProvider,
   mint: anchor.web3.PublicKey,
   ata: anchor.web3.PublicKey,
-  owner: anchor.web3.PublicKey
+  owner: anchor.web3.PublicKey,
 ): Promise<void> => {
   const tx = new anchor.web3.Transaction();
   tx.add(
@@ -157,8 +156,8 @@ export const createAssociatedTokenAccount = async (
       provider.wallet.publicKey,
       ata,
       owner,
-      mint
-    )
+      mint,
+    ),
   );
   await provider.sendAndConfirm(tx, []);
 };
@@ -167,11 +166,17 @@ export const mintTo = async (
   provider: anchor.AnchorProvider,
   mint: anchor.web3.PublicKey,
   ta: anchor.web3.PublicKey,
-  amount: bigint
+  amount: bigint,
 ): Promise<void> => {
   const tx = new anchor.web3.Transaction();
   tx.add(
-    spl.createMintToInstruction(mint, ta, provider.wallet.publicKey, amount, [])
+    spl.createMintToInstruction(
+      mint,
+      ta,
+      provider.wallet.publicKey,
+      amount,
+      [],
+    ),
   );
   await provider.sendAndConfirm(tx, []);
 };
@@ -179,13 +184,13 @@ export const mintTo = async (
 export const fetchTokenBalance = async (
   userPubKey: PublicKey,
   mintPubKey: PublicKey,
-  connection: Connection
+  connection: Connection,
 ) => {
   try {
     const associatedTokenAddress = await spl.getAssociatedTokenAddress(
       mintPubKey,
       userPubKey,
-      false
+      false,
     );
     const account = await spl.getAccount(connection, associatedTokenAddress);
 

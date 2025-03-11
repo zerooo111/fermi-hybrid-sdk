@@ -2,18 +2,18 @@ import * as ed from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha512";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { OrderIntent } from "./OrderIntent.js";
-import { OrderSide } from "./OrderIntent.js";
+import { OrderIntent } from "./OrderIntent.ts";
+import { createHash } from "crypto";
+import { sha1 } from "@noble/hashes/sha1";
+import { sha224 } from "@noble/hashes/sha256";
 
 // Configure ed25519 to use SHA-512
 ed.etc.sha512Sync = (...m) => sha512(ed.etc.concatBytes(...m));
 
-const FERMI_DEX_ORDER_PREFIX = "FRM_DEX_ORDER:";
-
 export interface OrderIntentJSON {
   orderId: string;
   owner: string;
-  side: OrderSide;
+  side: "Buy" | "Sell";
   price: string;
   quantity: string;
   expiry: string;
@@ -27,7 +27,7 @@ export interface OrderIntentJSON {
 export interface PlaceOrderIntentParams {
   price: number;
   quantity: number;
-  side: OrderSide;
+  side: "Buy" | "Sell";
   ownerKeypair: Keypair;
   expiry?: number;
   orderId?: number;
@@ -70,8 +70,6 @@ type OrderPlacementResponse = OrderPlacementSuccess | OrderPlacementError;
  */
 export class FermiSequencerClient {
   private baseUrl: string;
-  // TextEncoder is used for converting strings to Uint8Array for cryptographic operations
-  private textEncoder = new TextEncoder();
 
   /**
    * Creates a new instance of the Fermi Hybrid Client
@@ -82,216 +80,118 @@ export class FermiSequencerClient {
     this.baseUrl = config.baseUrl || "http://54.80.177.213:8080";
   }
 
-  /**
-   * Checks if the Fermi DEX API is healthy and responding
-   * @returns Promise<boolean> - True if the API is healthy
-   * @throws Error if the health check fails
-   */
-  async checkHealth(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/health`);
-      if (!response.ok) {
-        throw new Error(`Health check failed with status ${response.status}`);
-      }
-      return true;
-    } catch (error) {
-      console.error("Health check failed:", error);
-      throw error;
-    }
-  }
+  async placeOrderIntent({
+    order_id,
+    ownerKp,
+    side,
+    price,
+    quantity,
+    expiry,
+    base_mint,
+    quote_mint,
+  }: {
+    order_id: number;
+    ownerKp: Keypair;
+    side: "Buy" | "Sell";
+    price: number;
+    quantity: number;
+    expiry: number;
+    base_mint: PublicKey;
+    quote_mint: PublicKey;
+  }) {
+    console.log("PLACE ORDER INTENT");
 
-  /**
-   * Signs a message using Ed25519 with the owner's keypair
-   * @param messageBytes - Message to sign as Uint8Array
-   * @param owner - Keypair to sign the message with
-   * @returns Uint8Array - The signature
-   */
-  signMessage(messageBytes: Uint8Array, owner: Keypair): Uint8Array {
-    // Note: We only use first 32 bytes of secretKey as per Ed25519 spec
-    const signature = ed.sign(messageBytes, owner.secretKey.slice(0, 32));
-    return signature;
-  }
-
-  /**
-   * Verifies a message signature using Ed25519
-   * @param messageBytes - Original message as Uint8Array
-   * @param signature - Signature to verify
-   * @param owner - Keypair containing the public key for verification
-   * @returns boolean - True if signature is valid
-   */
-  verifyMessage(
-    messageBytes: Uint8Array,
-    signature: Uint8Array,
-    owner: Keypair
-  ): boolean {
-    const isValid = ed.verify(
-      signature,
-      messageBytes,
-      owner.publicKey.toBytes()
+    const orderIntent = new OrderIntent(
+      new BN(order_id),
+      ownerKp.publicKey,
+      side,
+      new BN(price),
+      new BN(quantity),
+      new BN(expiry),
+      base_mint,
+      quote_mint,
     );
-    return isValid;
-  }
 
-  /**
-   * Signs a message and verifies the signature in one operation
-   * This is used as a safety check to ensure signatures are valid before submission
-   * @param messageBytes - Message to sign
-   * @param owner - Keypair for signing
-   * @returns Uint8Array - The verified signature
-   * @throws Error if signature verification fails
-   */
-  signAndVerifyMessage(messageBytes: Uint8Array, owner: Keypair): Uint8Array {
-    const signature = this.signMessage(messageBytes, owner);
-    const isValid = this.verifyMessage(messageBytes, signature, owner);
+    console.log("ENCODING ORDER INTENT");
+    // Encode Message
+    const serializedData = OrderIntent.serialize(orderIntent);
+    const prefix = Buffer.from("FRM_DEX_ORDER");
+    const encodedMessage = Buffer.concat([prefix, serializedData]);
+
+    // hash the message
+    console.log("Hashing the message");
+
+    const sha256Hash = createHash("sha256")
+      .update(new Uint8Array(encodedMessage))
+      .digest();
+
+    const sha256Hash_hex = Buffer.from(sha256Hash).toString("hex");
+    console.log("Hash successfull: ", sha256Hash_hex);
+
+    console.log("Signing the message");
+
+    // Sign message
+    const signatureBytes = ed.sign(
+      Buffer.from(sha256Hash_hex),
+      ownerKp.secretKey,
+    );
+
+    const hexSignature = Buffer.from(signatureBytes).toString("hex");
+    console.log("Signature done : ", hexSignature);
+
+    console.log("Local verification");
+    // Verify the signature
+    const isValid = ed.verify(
+      signatureBytes,
+      Buffer.from(sha256Hash_hex),
+      ownerKp.publicKey.toBase58(),
+    );
 
     if (!isValid) {
-      throw new Error("Message signature verification failed");
+      console.log("Local verification failed");
+      throw new Error("Local Verification failed");
     }
 
-    return signature;
-  }
+    console.log("Local verification passed ");
 
-  /**
-   * Submits a signed order intent to the Fermi DEX Sequencer
-   * @param orderIntent - The order intent to submit
-   * @param signature - The signature proving ownership
-   * @returns Promise<OrderPlacementResponse> - The response from the DEX
-   * @throws Error if submission fails
-   */
-  async submitOrderIntent(
-    orderIntent: OrderIntent,
-    signature: Uint8Array
-  ): Promise<OrderPlacementResponse> {
-    const signatureHex = Buffer.from(signature).toString("hex");
-
+    console.log("sending request to sequencer");
     const body = {
-      intent: orderIntent.toJSON(),
-      signature: signatureHex,
+      intent: {
+        order_id: orderIntent.order_id.toNumber(),
+        owner: orderIntent.owner.toBase58(),
+        side: orderIntent.side,
+        price: orderIntent.price.toNumber(),
+        quantity: orderIntent.quantity.toNumber(),
+        expiry: orderIntent.expiry.toNumber(),
+        base_mint: orderIntent.base_mint.toBase58(),
+        quote_mint: orderIntent.quote_mint.toBase58(),
+      },
+      signature: hexSignature,
     };
 
-    const response = await fetch(`${this.baseUrl}/place_order`, {
+    console.log("sequencer request body", body);
+
+    const response = await fetch(this.baseUrl + "/place_order", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    console.log("Got response from sequencer");
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to submit order intent: ${data?.message || response.statusText}`
-      );
+      console.error(response);
+      return;
     }
+
+    const data = await response.json();
+    console.log("Response for /place_order: ", data);
 
     return data;
   }
 
-  /**
-   * Validates order parameters before submission
-   * @param price - Order price
-   * @param quantity - Order quantity
-   * @param ownerKeypair - Keypair for signing
-   * @throws Error if validation fails
-   */
-  private validateOrderIntent({
-    price,
-    quantity,
-    ownerKeypair,
-    baseMint,
-    quoteMint,
-  }: PlaceOrderIntentParams): void {
-    if (price <= 0 || quantity <= 0) {
-      throw new Error("Price and quantity must be positive");
-    }
-    if (!ownerKeypair) {
-      throw new Error("Owner keypair is required");
-    }
-    if (!baseMint || !quoteMint) {
-      throw new Error("Base mint and quote mint are required");
-    }
+  async getOrderbook() {
+    return await fetch(this.baseUrl + "/orderbook").then((res) => res.json());
   }
 
-  /**
-   * Creates an order intent object from the provided parameters
-   */
-  private createOrderIntent({
-    price,
-    quantity,
-    side,
-    expiry,
-    orderId,
-    ownerKeypair,
-    baseMint,
-    quoteMint,
-  }: PlaceOrderIntentParams): OrderIntent {
-    return new OrderIntent(
-      new BN(orderId ?? Date.now() + price),
-      ownerKeypair.publicKey,
-      side,
-      new BN(price),
-      new BN(quantity),
-      new BN(expiry ?? Math.floor(Date.now() / 1000) + 60 * 60),
-      baseMint,
-      quoteMint
-    );
-  }
-
-  /**
-   * Encodes a message with the Fermi DEX prefix using Borsh serialization
-   */
-  private encodeMessageWithPrefix(orderIntent: OrderIntent): Uint8Array {
-    const serializedData = OrderIntent.serialize(orderIntent);
-    const prefix = Buffer.from(FERMI_DEX_ORDER_PREFIX);
-    const fullMessage = Buffer.concat([prefix, serializedData]);
-    return new Uint8Array(fullMessage);
-  }
-
-  /**
-   * Deserializes an order intent from a buffer
-   */
-  deserializeOrderIntent(buffer: Buffer): OrderIntent {
-    return OrderIntent.deserialize(buffer);
-  }
-
-  /**
-   * Main method for placing an order on the Fermi DEX
-   * Handles the entire flow:
-   * 1. Validates the order parameters
-   * 2. Creates the order intent
-   * 3. Signs and verifies the intent
-   * 4. Submits to the DEX
-   *
-   * @param props - Order parameters including price, quantity, side, and keypair
-   * @returns Promise<OrderIntent> - The created and submitted order
-   * @throws Error if any step fails
-   */
-  async placeOrderIntent(props: PlaceOrderIntentParams): Promise<any> {
-    try {
-      this.validateOrderIntent(props);
-
-      const orderIntent = this.createOrderIntent(props);
-
-      // Encode the order intent with the Fermi DEX prefix for signing using Borsh
-      const encodedMessage = this.encodeMessageWithPrefix(orderIntent);
-      
-      console.log({
-        encodedMessage: Buffer.from(encodedMessage).toString("hex"),
-      });
-
-      const signature = this.signAndVerifyMessage(
-        encodedMessage,
-        props.ownerKeypair
-      );
-
-      console.log({ signature: Buffer.from(signature).toString("hex") });
-      const response = await this.submitOrderIntent(orderIntent, signature);
-
-      console.log({ response });
-
-      return orderIntent;
-    } catch (error) {
-      console.error("Failed to place order:", error);
-      throw error;
-    }
-  }
+  cancelOrderIntent() {}
 }

@@ -1,5 +1,5 @@
 import { type AnchorProvider } from "@coral-xyz/anchor";
-import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
+import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet.js";
 import {
   type AddressLookupTableAccount,
   ComputeBudgetProgram,
@@ -14,7 +14,7 @@ export async function sendTransaction(
   provider: AnchorProvider,
   ixs: TransactionInstruction[],
   alts: AddressLookupTableAccount[],
-  opts: any = {}
+  opts: any = {},
 ): Promise<string> {
   const connection = provider.connection;
   if ((connection as any).banksClient !== undefined) {
@@ -39,7 +39,7 @@ export async function sendTransaction(
     (await connection.getLatestBlockhash(
       opts?.preflightCommitment ??
         provider.opts.preflightCommitment ??
-        "finalized"
+        "finalized",
     ));
 
   const payer = provider.wallet;
@@ -65,10 +65,10 @@ export async function sendTransaction(
 
   if (
     typeof payer.signTransaction === "function" &&
-    !(payer instanceof NodeWallet || payer.constructor.name === "NodeWallet")
+    !(payer.constructor.name === "NodeWallet")
   ) {
     vtx = (await payer.signTransaction(
-      vtx as any
+      vtx as any,
     )) as unknown as VersionedTransaction;
   } else {
     // Maybe this path is only correct for NodeWallet?
@@ -111,7 +111,7 @@ export async function sendTransaction(
           blockhash: latestBlockhash.blockhash,
           lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
         },
-        txConfirmationCommitment
+        txConfirmationCommitment,
       )
     ).value;
   } else {
@@ -131,7 +131,7 @@ export async function sendTransaction(
 }
 
 export const createComputeBudgetIx = (
-  microLamports: number
+  microLamports: number,
 ): TransactionInstruction => {
   const computeBudgetIx = ComputeBudgetProgram.setComputeUnitPrice({
     microLamports,
